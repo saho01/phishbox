@@ -1,0 +1,45 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+name: $(TeamProject)_$(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.rr)
+pr: none
+trigger:
+  branches:
+    include:
+      - master
+  # tags:
+  #   include:
+  #     - v*
+variables:
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  GOROOT: '/home/seth.aho/go' # Go installation path
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  modulePath: '$(GOPATH)/src/github.com/saho01/$(build.repository.name)' # Path to the module's code
+  LOCAL_TAG: $(build.repository.name)/$(build.sourceversion)
+jobs:
+- job: Build
+  pool:
+    name: 'Default'
+  steps:
+  - script: |
+      mkdir -p '$(GOBIN)'
+      mkdir -p '$(GOPATH)/pkg'
+      mkdir -p '$(modulePath)'
+      shopt -s extglob
+      cp -R !(gopath) '$(modulePath)'
+      echo '##vso[task.prependpath]$(GOBIN)'
+      echo '##vso[task.prependpath]$(GOROOT)/bin'
+    displayName: 'Set up the Go workspace'
+  - script: |
+      go1.13.4 get -v -t -d
+    displayName: 'Go get'
+    workingDirectory: '$(modulePath)'
+  - script: |
+      golint -set_exit_status
+    displayName: 'Go Lint'
+    workingDirectory: '$(modulePath)'
+  - script: |
+      go1.13.4 test -v -cover
+    displayName: 'Run Tests'
+    workingDirectory: '$(modulePath)'
